@@ -1,4 +1,4 @@
-huggingface_hub
+huggingface-hub==0.23.2
 numba
 numpy>=1.24
 onnx>=1.7.0
