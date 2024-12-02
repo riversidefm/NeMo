@@ -382,7 +382,21 @@ class ClusteringDiarizer(torch.nn.Module, Model, DiarizationMixin):
             pkl.dump(self.embeddings, open(self._embeddings_file, 'wb'))
             logging.info("Saved embedding files to {}".format(embedding_dir))
 
-    def diarize(self, paths2audio_files: List[str] = None, batch_size: int = 0):
+    def path2audio_files_to_manifest(self, paths2audio_files, all_num_speakers, manifest_filepath):
+        with open(manifest_filepath, 'w', encoding='utf-8') as fp:
+            for audio_file, num_speakers in zip(paths2audio_files, all_num_speakers):
+                audio_file = audio_file.strip()
+                entry = {
+                    'audio_filepath': audio_file,
+                    'offset': 0.0,
+                    'duration': None,
+                    'text': '-',
+                    "num_speakers": num_speakers,
+                    'label': 'infer',
+                }
+                fp.write(json.dumps(entry) + '\n')
+
+    def diarize(self, paths2audio_files: List[str] = None, all_num_speakers: List[int] = None, batch_size: int = 0):
         """
         Diarize files provided through paths2audio_files or manifest file
         input:
@@ -409,9 +423,11 @@ class ClusteringDiarizer(torch.nn.Module, Model, DiarizationMixin):
             self._cfg.batch_size = batch_size
 
         if paths2audio_files:
+            if len(paths2audio_files) != len(all_num_speakers):
+                raise ValueError("Number of speakers must be provided for each file. Append None if unknown.")
             if type(paths2audio_files) is list:
                 self._diarizer_params.manifest_filepath = os.path.join(self._out_dir, 'paths2audio_filepath.json')
-                self.path2audio_files_to_manifest(paths2audio_files, self._diarizer_params.manifest_filepath)
+                self.path2audio_files_to_manifest(paths2audio_files, all_num_speakers, self._diarizer_params.manifest_filepath)
             else:
                 raise ValueError("paths2audio_files must be of type list of paths to file containing audio file")
 
